@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>TS3 集群管家</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body data-page="index">
+  <div class="page-glow" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand-row compact">
+      <div class="brand-mark" aria-hidden="true">TS3</div>
+      <div>
+        <p class="brand-name" data-i18n="app.name">TS3 集群管家</p>
+        <p class="brand-sub" data-i18n="app.tagline">TeamSpeak 3 多实例管理面板</p>
+      </div>
+    </div>
+    <div id="topbar-user" class="topbar-user" hidden>
+      <span class="muted" data-i18n="dashboard.logged_in_as">当前账号</span>
+      <strong id="current-user"></strong>
+      <button id="logout" class="button ghost small" type="button" data-i18n="dashboard.logout">退出登录</button>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <section id="app-loading" class="card state-card">
+      <p class="muted" data-i18n="dashboard.loading_session">正在检查登录状态…</p>
+    </section>
+
+    <section id="auth-view" class="auth-layout" hidden>
+      <div class="card auth-card">
+        <div id="auth-error" class="alert alert-error" role="alert" hidden></div>
+
+        <div id="login-panel">
+          <h1 data-i18n="login.title">登录面板</h1>
+          <p class="muted" data-i18n="login.desc">使用初始化时设置的管理员账号登录。</p>
+          <form id="login-form" novalidate>
+            <div class="field">
+              <label for="login-username" data-i18n="common.username">用户名</label>
+              <input id="login-username" name="username" type="text" autocomplete="username"
+                     spellcheck="false" maxlength="32" required>
+            </div>
+            <div class="field">
+              <label for="login-password" data-i18n="common.password">密码</label>
+              <input id="login-password" name="password" type="password" autocomplete="current-password"
+                     maxlength="72" required>
+            </div>
+            <div class="actions">
+              <button id="login-submit" class="button primary" type="submit" data-i18n="login.submit">登录</button>
+            </div>
+            <button id="show-forgot" class="link-button" type="button" data-i18n="login.forgot">忘记密码？</button>
+          </form>
+        </div>
+
+        <div id="forgot-panel" hidden>
+          <h1 data-i18n="login.reset_title">使用恢复码重置密码</h1>
+          <p class="muted" data-i18n="login.reset_desc">
+            输入用户名、任意一个未使用的恢复码和新密码。重置成功后所有会话都会失效。
+          </p>
+          <form id="forgot-form" novalidate>
+            <div class="field">
+              <label for="forgot-username" data-i18n="common.username">用户名</label>
+              <input id="forgot-username" name="username" type="text" autocomplete="username"
+                     spellcheck="false" maxlength="32" required>
+            </div>
+            <div class="field">
+              <label for="forgot-code" data-i18n="login.recovery_code">恢复码</label>
+              <input id="forgot-code" name="recovery_code" type="text" autocomplete="off"
+                     spellcheck="false" maxlength="16" placeholder="XXXX-XXXX"
+                     data-i18n-placeholder="login.recovery_placeholder" required>
+            </div>
+            <div class="field">
+              <label for="forgot-password" data-i18n="login.new_password">新密码</label>
+              <input id="forgot-password" name="new_password" type="password" autocomplete="new-password"
+                     maxlength="72" required>
+            </div>
+            <div class="field">
+              <label for="forgot-confirm" data-i18n="common.confirm_password">确认密码</label>
+              <input id="forgot-confirm" type="password" autocomplete="new-password" maxlength="72" required>
+            </div>
+            <div class="actions wrap">
+              <button id="forgot-back" class="button ghost" type="button" data-i18n="login.back_to_login">返回登录</button>
+              <button id="forgot-submit" class="button primary" type="submit" data-i18n="login.reset_submit">重置密码</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <aside class="card auth-aside">
+        <h2 data-i18n="login.aside_title">使用说明</h2>
+        <p class="muted" data-i18n="login.aside_desc">
+          创建实例后，面板会自动建容器、抓取管理员 token，并在配置了解析平台时写入 A + SRV 记录。
+        </p>
+        <ul class="feature-list">
+          <li data-i18n="login.aside_bullet_1">默认只监听回环地址，推荐 SSH 隧道访问</li>
+          <li data-i18n="login.aside_bullet_2">密码使用 bcrypt cost 12 存储</li>
+          <li data-i18n="login.aside_bullet_3">写接口要求 X-Requested-With: ts3panel</li>
+        </ul>
+      </aside>
+    </section>
+
+    <section id="dashboard-view" hidden>
+      <nav class="main-nav" aria-label="主导航">
+        <button id="nav-instances" class="nav-tab is-active" type="button" data-i18n="nav.instances">实例</button>
+        <button id="nav-ports" class="nav-tab" type="button" data-i18n="nav.ports">端口看板</button>
+        <button id="nav-settings" class="nav-tab" type="button" data-i18n="nav.settings">设置</button>
+      </nav>
+
+      <section id="view-instances">
+        <div class="stats-grid">
+          <article class="card stat-card">
+            <span class="stat-label" data-i18n="dashboard.instances">实例</span>
+            <strong id="stat-instances" class="stat-value">0</strong>
+          </article>
+          <article class="card stat-card">
+            <span class="stat-label" data-i18n="dashboard.running">运行中</span>
+            <strong id="stat-running" class="stat-value">0</strong>
+          </article>
+          <article class="card stat-card">
+            <span class="stat-label" data-i18n="dashboard.dns_pending">域名待验证</span>
+            <strong id="stat-dns" class="stat-value">0</strong>
+          </article>
+        </div>
+
+        <section class="card list-card">
+          <div class="list-head">
+            <div>
+              <h1 data-i18n="dashboard.title">实例列表</h1>
+              <p class="muted" data-i18n="dashboard.list_desc">每 10 秒自动刷新。</p>
+            </div>
+            <button id="new-instance" class="button primary" type="button" data-i18n="dashboard.new_instance">
+              新建实例
+            </button>
+          </div>
+
+          <div id="instances-loading" class="muted" data-i18n="dashboard.loading_instances">正在加载实例…</div>
+          <div id="instances-error" class="alert alert-error" role="alert" hidden></div>
+
+          <div id="instances-empty" class="empty-state" hidden>
+            <div class="empty-mark" aria-hidden="true">TS3</div>
+            <h2 data-i18n="dashboard.empty_title">还没有实例</h2>
+            <p class="muted" data-i18n="dashboard.empty_desc">
+              点击「新建实例」，填写名字和子域名即可。没有解析平台也可以先按 IP:端口 使用。
+            </p>
+          </div>
+
+          <div id="instances-list" class="instance-list"></div>
+        </section>
+      </section>
+
+      <section id="view-detail" hidden>
+        <div class="detail-topbar">
+          <button id="detail-back" class="link-button back-link" type="button" data-i18n="detail.back">
+            ← 返回实例列表
+          </button>
+        </div>
+
+        <div id="detail-skeleton" class="detail-skeleton" hidden aria-busy="true">
+          <div class="card detail-card skeleton-card">
+            <span class="skeleton skeleton-title"></span>
+            <span class="skeleton skeleton-line"></span>
+            <span class="skeleton skeleton-line short"></span>
+          </div>
+          <div class="detail-grid">
+            <div class="card detail-card skeleton-card">
+              <span class="skeleton skeleton-line"></span>
+              <span class="skeleton skeleton-line"></span>
+              <span class="skeleton skeleton-line short"></span>
+            </div>
+            <div class="card detail-card skeleton-card">
+              <span class="skeleton skeleton-line"></span>
+              <span class="skeleton skeleton-line short"></span>
+            </div>
+          </div>
+          <div class="card detail-card skeleton-card">
+            <span class="skeleton skeleton-line"></span>
+            <span class="skeleton skeleton-block"></span>
+          </div>
+        </div>
+
+        <div id="detail-error" class="card state-card" hidden>
+          <h1 data-i18n="detail.load_failed">详情加载失败</h1>
+          <p id="detail-error-message" class="muted"></p>
+          <div class="actions center">
+            <button id="detail-retry" class="button primary" type="button" data-i18n="common.retry">重试</button>
+            <button id="detail-error-back" class="button ghost" type="button" data-i18n="detail.back">返回实例列表</button>
+          </div>
+        </div>
+
+        <div id="detail-content" hidden>
+          <header class="card detail-head">
+            <div class="detail-head-main">
+              <h1 id="detail-name"></h1>
+              <p id="detail-subdomain" class="detail-subdomain"></p>
+            </div>
+            <div id="detail-badges" class="detail-badges"></div>
+          </header>
+
+          <div class="detail-grid">
+            <section class="card detail-card">
+              <div class="section-head">
+                <h2 data-i18n="detail.connection">连接信息</h2>
+              </div>
+              <div id="detail-connection" class="connection-box"></div>
+
+              <div class="subblock">
+                <div class="section-head">
+                  <h3 data-i18n="detail.token">管理员 token</h3>
+                  <span id="token-hint" class="hint"></span>
+                </div>
+                <div class="token-row">
+                  <code id="detail-token" class="token-value" aria-live="polite"></code>
+                  <button id="token-toggle" class="button ghost small" type="button" data-i18n="detail.show">显示</button>
+                  <button id="token-copy" class="button small" type="button" data-i18n="common.copy">复制</button>
+                </div>
+              </div>
+
+              <div class="subblock">
+                <div class="section-head">
+                  <h3 data-i18n="detail.ports">端口</h3>
+                  <button id="copy-ports" class="button ghost small" type="button" data-i18n="detail.copy_ports">复制端口</button>
+                </div>
+                <div id="detail-ports" class="port-table"></div>
+                <p class="hint" data-i18n="detail.query_hint">查询端口只绑定 127.0.0.1，不需要在安全组开放。</p>
+              </div>
+            </section>
+
+            <section class="card detail-card">
+              <div class="section-head">
+                <h2 data-i18n="detail.resources">资源占用</h2>
+                <button id="refresh-detail" class="button ghost small" type="button" data-i18n="common.refresh">刷新</button>
+              </div>
+              <div id="detail-stats" class="metric-grid"></div>
+              <p id="detail-stats-note" class="hint" data-i18n="detail.stats_note">资源快照缓存 10 秒，不会频繁读取 Docker。</p>
+            </section>
+          </div>
+
+          <section class="card detail-card">
+            <div class="section-head">
+              <h2 data-i18n="detail.domain">域名与解析</h2>
+              <span id="detail-dns-badge" class="status-badge"></span>
+            </div>
+            <div id="detail-dns-manual-note" class="alert alert-warning" hidden>
+              <strong data-i18n="detail.manual_note_title">手动解析模式</strong>
+              <p data-i18n="detail.manual_note_body">
+                这些记录由你自己在 DNS 控制台添加，面板无法删除。删除实例或切换解析平台时，请自行清理它们。
+              </p>
+            </div>
+            <p id="detail-dns-line" class="muted"></p>
+            <div id="detail-dns-detail" class="dns-detail"></div>
+            <div id="detail-verify-result" class="alert" role="status" hidden></div>
+            <div class="actions wrap">
+              <button id="bind-domain" class="button primary" type="button" data-i18n="detail.bind_domain">绑定 / 更换域名</button>
+              <button id="verify-domain" class="button ghost" type="button" data-i18n="detail.verify">重新验证</button>
+              <button id="manual-domain" class="button ghost" type="button" data-i18n="detail.manual_checklist">手动解析清单</button>
+              <button id="unbind-domain" class="button ghost" type="button" data-i18n="detail.unbind">解绑域名</button>
+            </div>
+          </section>
+
+          <section class="card detail-card">
+            <div class="section-head">
+              <h2 data-i18n="backup.title">备份与恢复</h2>
+              <span id="backup-meta" class="hint"></span>
+            </div>
+            <p class="muted" data-i18n="backup.desc">
+              备份时会短暂停止实例，打包完成后自动启动。恢复会用备份内容覆盖数据目录，成功后自动启动并校验容器状态。
+            </p>
+            <div id="backup-alert" class="alert" role="status" hidden></div>
+            <div class="actions wrap">
+              <button id="create-backup" class="button primary" type="button" data-i18n="backup.create">立即备份</button>
+              <label class="button ghost small file-button">
+                <span data-i18n="backup.upload">上传 tar.gz 并恢复</span>
+                <input id="upload-backup" type="file" accept=".gz,.tgz,application/gzip,application/x-gzip" hidden>
+              </label>
+              <button id="refresh-backups" class="button ghost small" type="button" data-i18n="common.refresh">刷新</button>
+            </div>
+            <div id="backups-loading" class="muted" data-i18n="backup.loading">正在加载备份…</div>
+            <div id="backups-error" class="alert alert-error" role="alert" hidden></div>
+            <div id="backups-empty" class="empty-state compact" hidden>
+              <p class="muted" data-i18n="backup.empty">还没有备份。点击「立即备份」创建第一份。</p>
+            </div>
+            <div id="backups-list" class="backup-list"></div>
+          </section>
+
+          <section class="card detail-card">
+            <div class="section-head">
+              <h2 data-i18n="detail.logs">容器日志</h2>
+              <span id="detail-log-meta" class="hint"></span>
+            </div>
+            <p id="detail-logs-fallback" class="muted" hidden data-i18n="detail.logs_unavailable">
+              日志暂不可用（容器可能不存在或 Docker 不可达）。
+            </p>
+            <pre id="detail-logs" class="log-view"></pre>
+          </section>
+
+          <section class="card detail-card danger-zone">
+            <div class="section-head">
+              <h2 data-i18n="detail.danger">危险操作</h2>
+              <span class="hint" data-i18n="detail.danger_hint">操作前请确认实例状态。</span>
+            </div>
+            <div class="actions wrap">
+              <button id="detail-start" class="button" type="button" data-i18n="detail.start">启动</button>
+              <button id="detail-stop" class="button" type="button" data-i18n="detail.stop">停止</button>
+              <button id="detail-restart" class="button" type="button" data-i18n="detail.restart">重启</button>
+              <button id="delete-instance" class="button danger" type="button" data-i18n="detail.delete">删除实例</button>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="view-ports" hidden>
+        <section class="card ports-card">
+          <div class="section-head ports-head">
+            <div>
+              <h1 data-i18n="ports.title">端口看板</h1>
+              <p class="muted" data-i18n="ports.desc">
+                汇总所有实例需要在云安全组放行的端口，可直接复制成工单。
+              </p>
+            </div>
+            <button id="refresh-ports" class="button ghost" type="button" data-i18n="common.refresh">刷新</button>
+          </div>
+
+          <div id="ports-loading" class="muted" data-i18n="ports.loading">正在汇总端口…</div>
+          <div id="ports-error" class="alert alert-error" role="alert" hidden></div>
+
+          <div id="ports-content" hidden>
+            <div id="ports-stats" class="stats-grid ports-stats"></div>
+
+            <div class="ports-block">
+              <div class="section-head">
+                <h2 data-i18n="ports.public_title">需要开放的安全组入方向</h2>
+                <span class="hint" data-i18n="ports.range_hint">相邻端口已合并为区间</span>
+              </div>
+              <div id="ports-public"></div>
+
+              <div class="ports-copy">
+                <pre id="ports-text" class="ports-text" aria-live="polite"></pre>
+                <div class="ports-copy-actions">
+                  <button id="copy-port-checklist" class="button primary" type="button" data-i18n="ports.copy_all">
+                    复制清单
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="ports-block ports-internal">
+              <div class="section-head">
+                <h2 data-i18n="ports.internal_title">不要开放</h2>
+                <span class="status-badge is-failed" data-i18n="ports.internal_badge">仅本机</span>
+              </div>
+              <p class="muted" data-i18n="ports.internal_desc">
+                查询端口只监听 127.0.0.1，用于面板内部管理；任何情况下都不要在云安全组开放。
+              </p>
+              <div id="ports-internal-ranges"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card ports-card">
+          <div class="section-head">
+            <div>
+              <h2 data-i18n="ports.check_title">外网连通性检测</h2>
+              <p class="muted" data-i18n="ports.check_desc">
+                从服务器外部逐个探测语音 UDP 端口，辅助确认安全组是否放行。本功能由第三方 check-host.net 探测，
+                默认关闭，可在设置页开启；结果缓存 60 秒。
+              </p>
+            </div>
+            <button id="check-ports" class="button" type="button" data-i18n="ports.check_button">开始检测</button>
+          </div>
+
+          <div id="ports-check-note" class="alert alert-warning" role="status" hidden></div>
+          <div id="ports-check-loading" class="muted" data-i18n="ports.checking" hidden>检测中…</div>
+          <div id="ports-check-result" hidden></div>
+          <p class="hint" data-i18n="ports.check_disclaimer">
+            第三方探测关闭、超时或结果不明确时会显示“未验证”，不会判定为不通；检测结果为辅助参考，最终以客户端能否连接为准。
+          </p>
+        </section>
+
+        <section class="card ports-card">
+          <div class="section-head">
+            <h2 data-i18n="ports.guide_title">云安全组开启指引</h2>
+          </div>
+          <div class="ports-guide">
+            <div class="guide-item">
+              <h3 data-i18n="ports.guide_aliyun_title">阿里云</h3>
+              <p data-i18n="ports.guide_aliyun">
+                登录阿里云控制台 → 云服务器 ECS → 网络与安全 → 安全组 → 找到实例绑定的安全组 →
+                配置规则 → 入方向 → 手动添加。协议类型选择“自定义 UDP”或“自定义 TCP”，端口范围照抄上方清单，
+                授权对象填 0.0.0.0/0。
+              </p>
+            </div>
+            <div class="guide-item">
+              <h3 data-i18n="ports.guide_tencent_title">腾讯云</h3>
+              <p data-i18n="ports.guide_tencent">
+                登录腾讯云控制台 → 云服务器 → 安全组 → 找到实例关联的安全组 → 入站规则 → 添加规则。
+                协议端口照抄上方清单，来源填 0.0.0.0/0。
+              </p>
+            </div>
+            <div class="guide-item">
+              <h3 data-i18n="ports.guide_system_title">服务器系统防火墙</h3>
+              <p data-i18n="ports.guide_system">
+                云安全组放行后，如果服务器启用了 firewalld 或 ufw，还需要在系统防火墙中放行相同端口。
+                CentOS 可用 firewall-cmd 追加端口，Ubuntu 可用 ufw allow。
+              </p>
+            </div>
+            <div class="alert alert-warning" data-i18n="ports.guide_warning">
+              只开放 UDP 语音段和 TCP 文件传输段。10011/10022 等查询端口只监听 127.0.0.1，
+              不要在任何安全组或系统防火墙中对外开放。
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section id="view-settings" hidden>
+        <section class="card settings-card">
+          <div class="section-head">
+            <div>
+              <h1 data-i18n="settings.providers_title">域名解析平台</h1>
+              <p class="muted" data-i18n="settings.providers_desc">
+                用于自动写入 A 与 SRV 记录。不配置也可以使用手动解析。
+              </p>
+            </div>
+            <button id="add-provider" class="button primary" type="button" data-i18n="settings.add_provider">
+              添加解析平台
+            </button>
+          </div>
+
+          <div class="alert alert-warning" data-i18n="settings.provider_unique">
+            同一平台 + 同一主域名只能有一个配置，保存会覆盖现有凭据。
+          </div>
+
+          <div id="providers-loading" class="muted" data-i18n="settings.loading_providers">正在加载解析平台…</div>
+          <div id="providers-error" class="alert alert-error" role="alert" hidden></div>
+          <div id="providers-empty" class="empty-state compact" hidden>
+            <p class="muted" data-i18n="settings.no_providers">
+              尚未配置解析平台。新建实例时可以先跳过域名绑定，之后再来这里添加。
+            </p>
+          </div>
+          <div id="providers-list" class="provider-list"></div>
+        </section>
+
+        <section class="card settings-card">
+          <div class="section-head">
+            <div>
+              <h1 data-i18n="settings.public_ip_title">服务器公网 IP</h1>
+              <p class="muted" data-i18n="settings.public_ip_desc">
+                用于写入 A 记录。云主机处于 NAT 后时请手动填写实际公网 IP。
+              </p>
+            </div>
+          </div>
+          <div class="field">
+            <label for="settings-public-ip" data-i18n="settings.public_ip_label">公网 IPv4</label>
+            <input id="settings-public-ip" type="text" inputmode="decimal" spellcheck="false"
+                   placeholder="1.2.3.4" data-i18n-placeholder="settings.public_ip_placeholder">
+          </div>
+          <p id="settings-detect-line" class="hint"></p>
+          <div id="settings-ip-alert" class="alert" role="status" hidden></div>
+          <div class="actions wrap">
+            <button id="use-detected-ip" class="button ghost" type="button" hidden data-i18n="settings.use_detected">
+              使用探测值
+            </button>
+            <button id="save-public-ip" class="button primary" type="button" data-i18n="settings.save_ip">保存公网 IP</button>
+          </div>
+          <p class="hint" data-i18n="settings.manual_first">
+            手填值优先于自动探测；探测失败不影响保存与创建实例。
+          </p>
+        </section>
+
+        <section class="card settings-card">
+          <div class="section-head">
+            <div>
+              <h1 data-i18n="settings.backup_plan_title">自动备份计划</h1>
+              <p class="muted" data-i18n="settings.backup_plan_desc">
+                由面板内置调度器执行，不依赖系统 cron。每天固定时间或每隔 N 小时自动备份全部实例，
+                并只保留最近 N 份自动备份（手动备份不会被自动删除）。
+              </p>
+            </div>
+            <span id="backup-plan-state" class="status-badge"></span>
+          </div>
+          <div class="backup-plan-grid">
+            <label class="option-row">
+              <input id="backup-enabled" type="checkbox">
+              <span data-i18n="settings.backup_enabled">启用自动备份</span>
+            </label>
+            <div class="field">
+              <label for="backup-mode" data-i18n="settings.backup_mode">执行模式</label>
+              <select id="backup-mode">
+                <option value="daily" data-i18n="settings.backup_mode_daily">每天固定时间</option>
+                <option value="interval" data-i18n="settings.backup_mode_interval">固定间隔</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="backup-daily-at" data-i18n="settings.backup_daily_at">每天执行时间</label>
+              <input id="backup-daily-at" type="time" value="04:30">
+            </div>
+            <div class="field">
+              <label for="backup-interval-hours" data-i18n="settings.backup_interval_hours">间隔小时</label>
+              <input id="backup-interval-hours" type="number" min="1" max="720" step="1" value="24">
+            </div>
+            <div class="field">
+              <label for="backup-retention" data-i18n="settings.backup_retention">保留份数</label>
+              <input id="backup-retention" type="number" min="1" max="100" step="1" value="7">
+            </div>
+          </div>
+          <p id="backup-plan-status" class="hint"></p>
+          <div id="backup-plan-alert" class="alert" role="status" hidden></div>
+          <div class="actions wrap">
+            <button id="save-backup-plan" class="button primary" type="button" data-i18n="settings.backup_save">
+              保存计划
+            </button>
+            <button id="refresh-backup-plan" class="button ghost" type="button" data-i18n="common.refresh">刷新</button>
+          </div>
+        </section>
+
+        <section class="card settings-card">
+          <div class="section-head">
+            <div>
+              <h1 data-i18n="settings.external_check_title">外网端口探测</h1>
+              <p class="muted" data-i18n="settings.external_check_desc">
+                端口看板的外网连通性检测由第三方 check-host.net 发起。该功能默认关闭；
+                开启后检测请求会发送到 check-host.net，结果缓存 60 秒。
+              </p>
+            </div>
+          </div>
+          <label class="option-row">
+            <input id="settings-external-check" type="checkbox">
+            <span data-i18n="settings.external_check_enable">启用第三方端口探测（check-host.net）</span>
+          </label>
+          <div id="external-check-alert" class="alert" role="status" hidden></div>
+          <div class="actions wrap">
+            <button id="save-external-check" class="button primary" type="button" data-i18n="settings.external_check_save">
+              保存探测设置
+            </button>
+          </div>
+        </section>
+
+        <section class="card settings-card">
+          <div class="section-head">
+            <div>
+              <h1 data-i18n="settings.all_backups_title">全部实例备份</h1>
+              <p class="muted" data-i18n="settings.all_backups_desc">
+                包含已删除实例的备份；删除实例不会删除备份文件。可从列表直接恢复（会按备份时的端口与地址重建实例）。
+              </p>
+            </div>
+            <button id="refresh-all-backups" class="button ghost" type="button" data-i18n="common.refresh">刷新</button>
+          </div>
+          <div id="all-backups-loading" class="muted" data-i18n="backup.loading">正在加载备份…</div>
+          <div id="all-backups-alert" class="alert" role="status" hidden></div>
+          <div id="all-backups-list" class="backup-list"></div>
+        </section>
+      </section>
+    </section>
+
+    <p class="footer-note" data-i18n="app.footer">
+      面板默认只监听 127.0.0.1，请通过 SSH 隧道访问。
+    </p>
+  </main>
+
+  <div id="modal-root" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-head">
+        <h2 id="modal-title"></h2>
+        <button id="modal-close" class="icon-button" type="button" aria-label="关闭" data-i18n-aria-label="common.close">×</button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

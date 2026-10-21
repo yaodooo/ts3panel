@@ -1,0 +1,94 @@
+# ts3panel 配置示例（config.example.toml）
+#
+# 安装脚本会生成真实的 /etc/ts3panel/config.toml：
+#   - 属主 root:root，权限 0600（文件内含会话密钥与凭据加密主密钥）
+#   - 目录 /etc/ts3panel 权限 0700
+# 本文件只用于说明字段，不含任何真实凭据，可直接复制为 config.toml 后手工填写。
+# 留空 session_secret / master_key 时，首次启动会自动生成随机值并写回文件。
+
+# 面板监听地址。默认只绑回环，通过 SSH 隧道访问。
+# 改成 0.0.0.0 会暴露到公网，必须自行加 HTTPS 反向代理并承担风险。
+listen = "127.0.0.1:8899"
+
+# TS3 实例数据根目录；每个实例占一个子目录，备份放在 {instance_root}/.backups。
+instance_root = "/srv/ts3"
+
+# 会话签名密钥，64 字节的 hex 字符串（128 个 hex 字符）。
+session_secret = ""
+
+# Provider 凭据的 AES-GCM 主密钥，32 字节的 hex 字符串（64 个 hex 字符）。
+# 已有 [[providers]] 时不可留空，否则面板拒绝启动（避免旧凭据无法解密）。
+master_key = ""
+
+# 根 CLI 重置账号时写入的一次性 setup token；安装脚本不预置，通常留空。
+setup_token = ""
+
+# ---------------------------------------------------------------------------
+# 解析平台（可选，多平台/多主域名各一条）
+#
+# 重要：Provider 按「平台 + 主域名」唯一。同一平台同一主域名再次保存会覆盖
+# 现有凭据，不会新增账号。凭据由面板加密后写入 creds_enc，不要手写明文。
+# ---------------------------------------------------------------------------
+# [[providers]]
+# id = "cf-main"                 # 面板生成，稳定标识
+# type = "cloudflare"            # cloudflare | aliyun | dnspod | manual
+# label = "我的 Cloudflare"
+# zone = "example.com"
+# zone_id = ""                   # Cloudflare 保存后自动填充
+# creds_enc = ""                 # AES-GCM 密文，由面板写入，不要手填
+# enabled = true
+# default = true
+#
+# [[providers]]
+# id = "aliyun-main"
+# type = "aliyun"
+# label = "阿里云 DNS"
+# zone = "example.org"
+# creds_enc = ""
+# enabled = true
+# default = false
+#
+# [[providers]]
+# id = "dnspod-main"
+# type = "dnspod"
+# label = "DNSPod"
+# zone = "example.net"
+# creds_enc = ""
+# enabled = true
+# default = false
+#
+# [[providers]]
+# id = "manual-main"
+# type = "manual"
+# label = "手动解析"
+# zone = "example.com"
+# enabled = true
+# default = false
+
+# 兼容旧配置：公网 IP 暂存于此表。
+# 手填值优先于自动探测；云主机 NAT 场景请务必手填。
+[cloudflare]
+public_ip = ""
+
+[docker]
+# 面板以 root 运行，默认读写本地 Docker socket。
+socket = "unix:///var/run/docker.sock"
+
+[limits]
+max_instances = 20               # 实例上限，默认 20
+ts3_memory = "512m"              # 每个 TS3 容器内存上限
+ts3_cpus = "1.0"                 # 每个 TS3 容器 CPU 上限
+record_ttl = 300                 # A / SRV 记录默认 TTL（秒）
+
+[backup]
+enabled = false                  # 自动备份默认关闭，由管理员开启
+mode = "daily"                   # daily | interval
+daily_at = "04:30"               # mode=daily 时的执行时间（服务器本地时区）
+interval_hours = 24              # mode=interval 时的间隔小时数
+retention = 7                    # 自动备份保留份数（手动备份不参与滚动清理）
+
+[ports]
+# 第三方端口探测默认关闭。开启后会请求 check-host.net；
+# 该服务不可达时结果只会显示「未知」，不会误报「不通」。
+external_check = false
+check_cache_seconds = 60         # 探测结果缓存秒数，允许 10–3600

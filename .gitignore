@@ -1,0 +1,27 @@
+# --- build output ---
+/ts3panel
+/ts3panel-linux
+/ts3panel.exe
+/dist/
+*.exe
+
+# --- runtime secrets and state (never commit) ---
+state.json
+*.sqlitedb
+config.toml
+!config.example.toml
+.backups/
+audit.log
+*.log
+
+# --- local test material and credentials ---
+ts3panel-test-env.md
+.env
+.env.*
+
+# --- editors / OS ---
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

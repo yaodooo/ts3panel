@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>初始化 · TS3 集群管家</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body data-page="setup">
+  <div class="page-glow" aria-hidden="true"></div>
+
+  <main class="setup-shell">
+    <header class="brand-row">
+      <div class="brand-mark" aria-hidden="true">TS3</div>
+      <div>
+        <p class="brand-name" data-i18n="app.name">TS3 集群管家</p>
+        <p class="brand-sub" data-i18n="app.tagline">TeamSpeak 3 多实例管理面板</p>
+      </div>
+    </header>
+
+    <section id="setup-loading" class="card state-card">
+      <p class="muted" data-i18n="setup.loading">正在检查初始化状态…</p>
+    </section>
+
+    <section id="setup-blocked" class="card state-card" hidden>
+      <h1 data-i18n="setup.completed_title">初始化已完成</h1>
+      <p id="setup-blocked-message" class="muted" data-i18n="setup.completed_desc">
+        面板已完成初始化，请前往登录页。
+      </p>
+      <div class="actions">
+        <a id="setup-go-login" class="button primary" href="/" data-i18n="setup.go_login">前往登录</a>
+        <button id="setup-retry" class="button ghost" type="button" hidden data-i18n="common.retry">重试</button>
+      </div>
+    </section>
+
+    <section id="setup-app" class="card setup-card" hidden>
+      <div class="setup-head">
+        <div>
+          <h1 id="setup-title" data-i18n="setup.title">初始化向导</h1>
+          <p id="setup-subtitle" class="muted" data-i18n="setup.subtitle">
+            四步完成管理员账号、解析平台与恢复码设置。
+          </p>
+        </div>
+        <span id="setup-mode-badge" class="badge" hidden data-i18n="setup.reset_badge">账号重置</span>
+      </div>
+
+      <ol class="stepper" id="setup-stepper" aria-label="初始化步骤" data-i18n-aria-label="setup.stepper_label">
+        <li class="step is-active" data-step="1">
+          <span class="step-number">1</span>
+          <span class="step-label" data-i18n="setup.step_account">管理员账号</span>
+        </li>
+        <li class="step" data-step="2">
+          <span class="step-number">2</span>
+          <span class="step-label" data-i18n="setup.step_provider">解析平台</span>
+        </li>
+        <li class="step" data-step="3">
+          <span class="step-number">3</span>
+          <span class="step-label" data-i18n="setup.step_ip">公网 IP</span>
+        </li>
+        <li class="step" data-step="4">
+          <span class="step-number">4</span>
+          <span class="step-label" data-i18n="setup.step_codes">恢复码</span>
+        </li>
+      </ol>
+
+      <div id="setup-error" class="alert alert-error" role="alert" hidden></div>
+
+      <div class="step-panel" data-step-panel="1">
+        <h2 data-i18n="setup.account_title">设置管理员账号</h2>
+        <p class="muted" data-i18n="setup.account_desc">
+          用户名 3–32 位，仅限字母、数字、下划线和连字符；密码至少 10 位且包含字母和数字。
+        </p>
+
+        <div class="field">
+          <label for="setup-username" data-i18n="common.username">用户名</label>
+          <input id="setup-username" name="username" type="text" autocomplete="username"
+                 spellcheck="false" maxlength="32" placeholder="例如 yao"
+                 data-i18n-placeholder="setup.username_placeholder">
+          <p class="hint" data-i18n="setup.username_hint">3–32 位，字母/数字/下划线/连字符</p>
+        </div>
+
+        <div class="field">
+          <label for="setup-password" data-i18n="common.password">密码</label>
+          <input id="setup-password" name="password" type="password" autocomplete="new-password"
+                 maxlength="72" placeholder="至少 10 位，包含字母和数字"
+                 data-i18n-placeholder="setup.password_placeholder">
+          <p class="hint" data-i18n="setup.password_hint">至少 10 位，必须同时包含字母和数字</p>
+        </div>
+
+        <div class="field">
+          <label for="setup-password-confirm" data-i18n="common.confirm_password">确认密码</label>
+          <input id="setup-password-confirm" type="password" autocomplete="new-password" maxlength="72">
+        </div>
+
+        <div class="actions">
+          <button id="step1-next" class="button primary" type="button" data-i18n="common.next">下一步</button>
+        </div>
+      </div>
+
+      <div class="step-panel" data-step-panel="2" hidden>
+        <h2 data-i18n="setup.provider_title">选择域名解析平台</h2>
+        <p class="muted" data-i18n="setup.provider_desc">
+          面板将使用所选平台写入 A 与 SRV 记录；也可以先跳过，使用手动解析清单。
+        </p>
+
+        <fieldset class="provider-grid">
+          <legend class="sr-only" data-i18n="setup.provider_legend">解析平台</legend>
+
+          <label class="provider-card">
+            <input type="radio" name="provider" value="cloudflare" aria-label="Cloudflare">
+            <span class="provider-name">Cloudflare</span>
+            <span class="provider-desc" data-i18n="setup.provider_cloudflare_desc">API Token</span>
+          </label>
+
+          <label class="provider-card">
+            <input type="radio" name="provider" value="aliyun" aria-label="阿里云 DNS"
+                   data-i18n-aria-label="setup.provider_aliyun">
+            <span class="provider-name" data-i18n="setup.provider_aliyun">阿里云 DNS</span>
+            <span class="provider-desc" data-i18n="setup.provider_aliyun_desc">AccessKey</span>
+          </label>
+
+          <label class="provider-card">
+            <input type="radio" name="provider" value="dnspod" aria-label="DNSPod">
+            <span class="provider-name" data-i18n="setup.provider_dnspod">DNSPod</span>
+            <span class="provider-desc" data-i18n="setup.provider_dnspod_desc">SecretId / SecretKey</span>
+          </label>
+
+          <label class="provider-card">
+            <input type="radio" name="provider" value="manual" aria-label="手动解析"
+                   data-i18n-aria-label="setup.provider_manual">
+            <span class="provider-name" data-i18n="setup.provider_manual">手动解析</span>
+            <span class="provider-desc" data-i18n="setup.provider_manual_desc">生成记录清单</span>
+          </label>
+
+          <label class="provider-card">
+            <input type="radio" name="provider" value="skip" aria-label="先跳过"
+                   data-i18n-aria-label="setup.provider_skip" checked>
+            <span class="provider-name" data-i18n="setup.provider_skip">先跳过</span>
+            <span class="provider-desc" data-i18n="setup.provider_skip_desc">之后可手动解析或到设置页配置</span>
+          </label>
+        </fieldset>
+
+        <div id="provider-fields" hidden>
+          <div class="field">
+            <label for="provider-label" data-i18n="setup.provider_label">显示名称</label>
+            <input id="provider-label" type="text" maxlength="80" autocomplete="off"
+                   placeholder="可选" data-i18n-placeholder="common.optional">
+          </div>
+
+          <div class="field">
+            <label for="provider-zone" data-i18n="setup.provider_zone">主域名</label>
+            <input id="provider-zone" type="text" autocomplete="off" spellcheck="false"
+                   placeholder="example.com" data-i18n-placeholder="setup.provider_zone_hint">
+            <p class="hint" data-i18n="setup.provider_zone_desc">与域名注册商 / DNS 托管平台上的 Zone 一致</p>
+          </div>
+
+          <div class="provider-creds" data-provider-fields="cloudflare" hidden>
+            <div class="field">
+              <label for="cf-token" data-i18n="setup.api_token">API Token</label>
+              <input id="cf-token" type="password" autocomplete="off">
+            </div>
+            <p class="hint" data-i18n="setup.cloudflare_hint">
+              凭据会以 AES-GCM 加密保存在 config.toml；M1 阶段不做连通性测试。
+            </p>
+          </div>
+
+          <div class="provider-creds" data-provider-fields="aliyun" hidden>
+            <div class="field">
+              <label for="ali-key-id" data-i18n="setup.access_key_id">AccessKey ID</label>
+              <input id="ali-key-id" type="text" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="field">
+              <label for="ali-key-secret" data-i18n="setup.access_key_secret">AccessKey Secret</label>
+              <input id="ali-key-secret" type="password" autocomplete="off">
+            </div>
+          </div>
+
+          <div class="provider-creds" data-provider-fields="dnspod" hidden>
+            <div class="field">
+              <label for="dnspod-secret-id" data-i18n="setup.secret_id">SecretId</label>
+              <input id="dnspod-secret-id" type="text" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="field">
+              <label for="dnspod-secret-key" data-i18n="setup.secret_key">SecretKey</label>
+              <input id="dnspod-secret-key" type="password" autocomplete="off">
+            </div>
+          </div>
+
+          <p class="hint" data-provider-fields="manual" hidden data-i18n="setup.manual_hint">
+            手动解析模式无需凭据，稍后可在实例详情页复制记录清单。
+          </p>
+        </div>
+
+        <div class="actions">
+          <button id="step2-back" class="button ghost" type="button" data-i18n="common.back">上一步</button>
+          <button id="step2-next" class="button primary" type="button" data-i18n="common.next">下一步</button>
+        </div>
+      </div>
+
+      <div class="step-panel" data-step-panel="3" hidden>
+        <h2 data-i18n="setup.ip_title">服务器公网 IP</h2>
+        <p class="muted" data-i18n="setup.ip_desc">
+          用于 A 记录。可留空，稍后在设置中填写；云主机 NAT 场景请填写实际公网 IP。
+        </p>
+        <div class="field">
+          <label for="setup-public-ip" data-i18n="setup.ip_label">公网 IPv4</label>
+          <input id="setup-public-ip" type="text" inputmode="decimal" autocomplete="off"
+                 placeholder="1.2.3.4" data-i18n-placeholder="setup.ip_hint">
+        </div>
+        <div class="actions">
+          <button id="step3-back" class="button ghost" type="button" data-i18n="common.back">上一步</button>
+          <button id="step3-submit" class="button primary" type="button" data-i18n="setup.submit">创建管理员账号</button>
+        </div>
+      </div>
+
+      <div class="step-panel" data-step-panel="4" hidden>
+        <h2 data-i18n="setup.codes_title">请保存恢复码</h2>
+        <p class="muted" data-i18n="setup.codes_desc">
+          以下 8 个恢复码仅显示这一次。忘记密码时，任意一个未使用的恢复码可用于重置密码。
+        </p>
+        <div class="alert alert-warning" data-i18n="setup.codes_warning">
+          关闭页面后将无法再次查看；若丢失，请在服务器执行 ts3panel reset-password。
+        </div>
+        <div id="recovery-grid" class="recovery-grid" aria-live="polite"></div>
+
+        <div class="actions wrap">
+          <button id="copy-codes" class="button ghost" type="button" data-i18n="setup.copy_all">复制全部</button>
+          <button id="download-codes" class="button ghost" type="button" data-i18n="setup.download">下载为 txt</button>
+        </div>
+
+        <label class="checkbox-row">
+          <input id="saved-codes" type="checkbox" aria-label="我已妥善保存恢复码"
+                 data-i18n-aria-label="setup.saved_checkbox">
+          <span data-i18n="setup.saved_checkbox">我已妥善保存恢复码</span>
+        </label>
+
+        <div class="actions">
+          <button id="finish-setup" class="button primary" type="button" disabled data-i18n="setup.finish">进入面板</button>
+        </div>
+      </div>
+    </section>
+
+    <p class="footer-note" data-i18n="app.footer">
+      面板默认只监听 127.0.0.1，请通过 SSH 隧道访问。
+    </p>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
