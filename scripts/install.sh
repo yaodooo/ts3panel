@@ -225,9 +225,12 @@ download_release() {
 	local version="$1"
 	local asset="ts3panel_${version}_linux_${ARCH}.tar.gz"
 	local base="${TS3PANEL_GITHUB:-https://github.com}/${REPO}/releases/download/v${version}"
+	# Keep the published asset name: the checksums file references that exact
+	# name, and sha256sum -c resolves it relative to TMP_DIR.
+	local pkg="${TMP_DIR}/${asset}"
 
 	info "下载 ts3panel ${version} (${ARCH})…"
-	http_get "${base}/${asset}" "${TMP_DIR}/pkg.tar.gz" ||
+	http_get "${base}/${asset}" "$pkg" ||
 		die "下载失败: ${base}/${asset}
 可改用 --from-file 从本地包安装，或检查服务器到 GitHub 的网络。"
 
@@ -236,7 +239,7 @@ download_release() {
 		line="$(grep -F "  ${asset}" "${TMP_DIR}/checksums.txt" || true)"
 		if [[ -n "$line" ]]; then
 			(cd "$TMP_DIR" && printf '%s\n' "$line" | sha256sum -c - >/dev/null 2>&1) ||
-				die "校验和验证失败，安装包可能损坏。"
+				die "校验和验证失败，安装包可能损坏（若网络经过代理，请改用 --from-file 或镜像）。"
 			info "校验和验证通过。"
 		else
 			warn "校验和文件中没有 ${asset}，跳过校验。"
@@ -245,7 +248,7 @@ download_release() {
 		warn "未能下载校验和，跳过校验（可自行比对 Release 页面）。"
 	fi
 
-	tar -xzf "${TMP_DIR}/pkg.tar.gz" -C "${TMP_DIR}/extract"
+	tar -xzf "$pkg" -C "${TMP_DIR}/extract"
 	BIN_SRC="$(select_archive_binary "${TMP_DIR}/extract")"
 }
 

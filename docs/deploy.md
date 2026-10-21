@@ -51,7 +51,7 @@ curl -fsSL https://raw.githubusercontent.com/yaodooo/ts3panel/main/scripts/insta
 如果需要固定版本或使用镜像：
 
 ```bash
-sudo bash install.sh --version 1.0.0
+sudo bash install.sh --version 1.0.1
 sudo TS3PANEL_REPO='your-name/ts3panel' bash install.sh
 sudo TS3PANEL_GITHUB='https://<GitHub 镜像>' bash install.sh
 ```
@@ -62,7 +62,7 @@ sudo TS3PANEL_GITHUB='https://<GitHub 镜像>' bash install.sh
 `scripts/install.sh` 一起上传：
 
 ```bash
-sudo bash install.sh --from-file ./ts3panel_1.0.0_linux_amd64.tar.gz
+sudo bash install.sh --from-file ./ts3panel_1.0.1_linux_amd64.tar.gz
 ```
 
 `--from-file` 也接受裸二进制；可用 `--sha256 <hex>` 额外校验文件完整性。
@@ -155,7 +155,7 @@ ssh -L 8899:127.0.0.1:8899 root@<服务器公网 IP>
 curl -fsSL https://raw.githubusercontent.com/yaodooo/ts3panel/main/scripts/install.sh | sudo bash
 
 # 或离线
-sudo bash install.sh --from-file ./ts3panel_1.0.0_linux_amd64.tar.gz
+sudo bash install.sh --from-file ./ts3panel_1.0.1_linux_amd64.tar.gz
 ```
 
 脚本会替换二进制、重写 unit、`systemctl restart ts3panel`。`state.json` 带版本号，启动时按序迁移。

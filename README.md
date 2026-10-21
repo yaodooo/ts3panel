@@ -77,10 +77,10 @@ ssh -L 8899:127.0.0.1:8899 root@<服务器公网 IP>
 
 ```bash
 # 在能上网的机器下载 Release 包（含二进制、LICENSE、README、示例配置）
-# ts3panel_1.0.0_linux_amd64.tar.gz
+# ts3panel_1.0.1_linux_amd64.tar.gz
 
 # 上传到服务器后：
-sudo bash scripts/install.sh --from-file ./ts3panel_1.0.0_linux_amd64.tar.gz
+sudo bash scripts/install.sh --from-file ./ts3panel_1.0.1_linux_amd64.tar.gz
 ```
 
 `--from-file` 也可以直接传裸二进制。安装脚本本身可从仓库 `scripts/install.sh` 提前拷过去。
@@ -255,7 +255,7 @@ go test ./...
 
 # 交叉编译（发布包同款）
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
-  -ldflags "-s -w -X main.version=1.0.0" -o ts3panel ./cmd/ts3panel
+  -ldflags "-s -w -X main.version=1.0.1" -o ts3panel ./cmd/ts3panel
 ```
 
 前端是 `web/` 下的原生 HTML/CSS/JS，通过 `embed.FS` 打进二进制；**没有构建步骤、没有 npm、没有 CDN**。

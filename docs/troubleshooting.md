@@ -37,7 +37,7 @@ Debian / Ubuntu 安装步骤见 [部署文档](deploy.md#安装-dockerdebian--ub
 GitHub 在该网络不可达。改用离线安装：
 
 ```bash
-sudo bash install.sh --from-file ./ts3panel_1.0.0_linux_amd64.tar.gz
+sudo bash install.sh --from-file ./ts3panel_1.0.1_linux_amd64.tar.gz
 ```
 
 或设置镜像：`TS3PANEL_GITHUB='https://<镜像>'`。
